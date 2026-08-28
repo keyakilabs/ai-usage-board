@@ -154,6 +154,14 @@ export default function Dashboard() {
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           <div className="flex items-baseline gap-2.5 min-w-0">
             <h1 className="text-lg font-bold truncate">AI Usage Board</h1>
+            {data?.demo ? (
+              <span
+                className="shrink-0 rounded-full border border-[var(--accent)] px-2 py-0.5 text-[11px] font-bold text-[var(--accent)]"
+                title="--demo で起動しています。表示中の数値はすべてサンプルで、手元のログは読み込んでいません。"
+              >
+                サンプルデータ
+              </span>
+            ) : null}
             <a
               href="https://www.keyaki-labs.com/products/ai-usage-board"
               target="_blank"
@@ -274,7 +282,11 @@ export default function Dashboard() {
         )}
 
         <footer className="pt-2 pb-6 text-xs text-[var(--muted)] border-t border-[var(--line)] flex flex-wrap items-center gap-x-4 gap-y-1">
-          <span>読み取ったデータは外部に送信していません（このページは localhost で動いています）。</span>
+          <span>
+            {data?.demo
+              ? "サンプルデータを表示しています。手元のログは読み込んでいません（--demo を外すと実データになります）。"
+              : "読み取ったデータは外部に送信していません（このページは localhost で動いています）。"}
+          </span>
           <a
             href="https://www.keyaki-labs.com/"
             target="_blank"

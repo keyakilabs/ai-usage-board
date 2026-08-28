@@ -49,6 +49,19 @@ npm version patch && npm publish
 node bin/ai-usage-board.js --help
 ```
 
+## 紹介用スクリーンショットの撮り方
+
+実データには利用者本人の支出額が写るので、**必ず `--demo` で撮る**。
+playwright は常設の依存に入れていない（軽量化の趣旨に反するため）ので、撮るときだけ入れる。
+
+```bash
+node bin/ai-usage-board.js --demo &   # port 3456
+npx playwright screenshot --viewport-size=1280,980 http://localhost:3456/ out.png
+```
+
+⚠️ Recharts のマウントアニメーションが終わる前に撮ると**グラフが空の画像になる**。
+棒の高さが伸びきるのを待ってから撮ること。
+
 ## データソース
 
 | ツール | ソース | データ内容 |

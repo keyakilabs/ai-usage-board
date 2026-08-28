@@ -97,6 +97,8 @@ export interface ClaudeProfile {
 }
 
 export interface DashboardData {
+  /** --demo で起動したダミーデータかどうか。画面にバッジを出すために使う。 */
+  demo?: boolean;
   claudeCode: ClaudeCodeStats | null;
   claudeProfiles: ClaudeProfile[];
   openCode: OpenCodeStats | null;

@@ -11,6 +11,14 @@ npx ai-usage-board
 
 インストール不要。実行すると `http://localhost:3456` が開きます。
 
+手元にログが無くても、まず画面を見てみたい場合は:
+
+```bash
+npx ai-usage-board --demo
+```
+
+サンプルデータで描画します。**このモードではローカルのファイルを一切読みません。**
+
 ---
 
 ## なぜ作ったか
@@ -50,6 +58,9 @@ npx ai-usage-board
 # ポートを変える
 PORT=4000 npx ai-usage-board
 
+# サンプルデータで表示する（ローカルのファイルを読まない）
+npx ai-usage-board --demo
+
 # ヘルプ
 npx ai-usage-board --help
 ```
@@ -87,6 +98,10 @@ npm run build   # 本番ビルド
 ```
 
 Next.js 15 (App Router) / TypeScript / Tailwind CSS v4 / Recharts / better-sqlite3。
+
+⚠️ **`next.config.mjs` を `.ts` に戻さないでください。** `.ts` にすると Next.js が設定を読むために
+TypeScript 本体（8.7MB）を standalone 出力に同梱してしまいます。`npx` で配る以上、
+初回ダウンロードの重さがそのまま使い勝手に響きます。
 
 ## ライセンス
 
