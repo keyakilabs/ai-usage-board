@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+/*
+ * Keyaki Labs ブランド配色。keyaki-labs.com の globals.css と同じトークン名・同じ値。
+ * サイト側と同様、OSのダークモード設定に関わらず常にこの温かい配色に統一する。
+ */
+:root {
+  --paper: #FAF6EF;
+  --paper-raised: #FFFFFF;
+  --ink: #2A2420;
+  --muted: #726558;
+  --line: #E7DDCD;
+  --accent: #A3432B;
+  --accent-strong: #7C3320;
+  --accent-soft: #F1DFC9;
+
+  /*
+   * ツール識別色。クローム（アクセント＝テラコッタ）とは必ず別系統にする。
+   * 旧配色では期間ボタンの青と Claude Code の青が同じで、
+   * 「UIの状態」と「どのツールのデータか」を見分けられなかった。
+   */
+  --tool-cc: #2E5E7E;
+  --tool-oc: #3E6B4F;
+  --tool-gemini: #6A4C93;
+  --tool-ag: #9A6B1F;
+}

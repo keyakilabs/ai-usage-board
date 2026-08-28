@@ -1,0 +1,28 @@
+# Next.js
+.next/
+out/
+
+# Dependencies
+node_modules/
+
+# Local env
+.env
+.env.local
+.env.*.local
+
+# Claude Code local settings
+.claude/settings.local.json
+CLAUDE.local.md
+
+# OMC
+.omc/
+
+# OS
+.DS_Store
+.vercel
+
+# TypeScript incremental build info
+*.tsbuildinfo
+
+# 旧privateリポジトリの履歴（新リポジトリには含めない）
+.git-old-private/

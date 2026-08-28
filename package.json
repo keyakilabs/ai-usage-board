@@ -1,0 +1,62 @@
+{
+  "name": "ai-usage-board",
+  "version": "1.0.0",
+  "description": "Claude Code / Gemini CLI / OpenCode / Antigravity のローカルログを読み取り、AIコーディングツールの使用量とコストを1画面にまとめるCLIツール。データは外部に送信しません。",
+  "keywords": [
+    "claude-code",
+    "gemini-cli",
+    "opencode",
+    "antigravity",
+    "ai",
+    "usage",
+    "dashboard",
+    "cli",
+    "token",
+    "cost",
+    "local"
+  ],
+  "homepage": "https://www.keyaki-labs.com/products/ai-usage-board",
+  "bugs": {
+    "url": "https://github.com/keyakilabs/ai-usage-board/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/keyakilabs/ai-usage-board.git"
+  },
+  "license": "MIT",
+  "author": "Keyaki Labs",
+  "engines": {
+    "node": ">=18"
+  },
+  "bin": {
+    "ai-usage-board": "./bin/ai-usage-board.js"
+  },
+  "files": [
+    ".next/standalone",
+    "bin"
+  ],
+  "scripts": {
+    "dev": "next dev --port 3456",
+    "build": "next build && node scripts/postbuild.mjs",
+    "start": "next start --port 3456",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.10.0",
+    "date-fns": "^4.2.1",
+    "next": "^15.3.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^3.8.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "tsx": "^4.22.3",
+    "typescript": "^5"
+  }
+}
