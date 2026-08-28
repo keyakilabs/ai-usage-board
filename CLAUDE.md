@@ -37,7 +37,12 @@ npm run dev
 # ビルド
 npm run build
 
-# npm 公開（ビルド込み）
+# npm 公開（⚠️ 必ず中立なパスにクローンしてから行う）
+#   Next.js の standalone 出力にはビルド時の絶対パスが埋め込まれ、
+#   package.json の files に含まれるため npm 経由で公開されてしまう。
+#   ホーム配下でビルドすると postbuild が警告を出す。
+git clone https://github.com/keyakilabs/ai-usage-board.git /tmp/aub-build
+cd /tmp/aub-build && npm ci
 npm version patch && npm publish
 
 # ヘルプ確認
