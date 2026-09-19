@@ -261,7 +261,7 @@ export default function Dashboard() {
             )}
 
             {activeTool === "cc" && <ModelCostBar data={modelCostData} title="モデル別コスト" />}
-            {activeTool === "oc" && <ModelCostBar data={ocModelData} title="モデル別トークン" />}
+            {activeTool === "oc" && <ModelCostBar data={ocModelData} title="モデル別トークン" format={fmtCompact} />}
             {activeTool === "gemini" && (
               <div className="rounded-xl border border-[var(--line)] bg-[var(--paper-raised)] p-5 flex items-center justify-center text-[var(--muted)] text-sm">
                 Gemini CLI はトークン・コスト非公開

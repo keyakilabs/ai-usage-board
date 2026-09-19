@@ -24,9 +24,11 @@ function shortName(name: string): string {
 interface Props {
   data: Record<string, { cost?: number }>;
   title: string;
+  /** 値の書式。既定は金額（$）。トークン数を並べるときは fmtCompact などを渡す */
+  format?: (n: number) => string;
 }
 
-export function ModelCostBar({ data, title }: Props) {
+export function ModelCostBar({ data, title, format = fmtCost }: Props) {
   const entries = Object.entries(data)
     .map(([name, v]) => ({ name: shortName(name), fullName: name, cost: v.cost ?? 0 }))
     .filter((e) => e.cost > 0)
@@ -42,7 +44,7 @@ export function ModelCostBar({ data, title }: Props) {
           <div key={e.fullName}>
             <div className="flex items-center justify-between mb-1 text-xs text-[var(--muted)]">
               <span>{e.name}</span>
-              <span className="font-mono">{fmtCost(e.cost)}</span>
+              <span className="font-mono">{format(e.cost)}</span>
             </div>
             <div className="h-2 bg-[var(--accent-soft)] rounded-full overflow-hidden">
               <div
