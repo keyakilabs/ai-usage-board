@@ -1,6 +1,6 @@
 # ai-usage-board
 
-Claude Code / Gemini CLI / OpenCode / Antigravity の使用状況をリアルタイム可視化するダッシュボード。`npx ai-usage-board` で起動するCLI npm パッケージ。
+Claude Code / Gemini CLI / OpenCode / Antigravity の使用状況を1画面にまとめて可視化するダッシュボード（画面を開いたとき・更新ボタンを押したときに取得する。Claude Code のログの読み込み結果は5分間キャッシュする）。`npx ai-usage-board` で起動するCLI npm パッケージ。
 
 ## 技術スタック
 
@@ -15,7 +15,6 @@ Claude Code / Gemini CLI / OpenCode / Antigravity の使用状況をリアルタ
 ```
 app/
   api/data/route.ts     # 全データ取得 API
-  api/stream/route.ts   # SSE リアルタイム更新
   page.tsx              # メインダッシュボード
 bin/
   ai-usage-board.js       # CLI エントリポイント（npx 用）
