@@ -203,9 +203,65 @@ function parseJSONLForDir(projectsDir: string): ParsedJSONL {
   let totalSessions = 0;
   let totalMessages = 0;
 
+  type AssistantEntry = { message: { id?: string; model: string; usage: Record<string, any> }; timestamp: string };
+
+  /** 1つの応答を集計に足す。金額が0の行（トークン0の合成メッセージ等）は数えない。 */
+  const add = (entry: AssistantEntry): boolean => {
+    const msg = entry.message;
+    const ts = entry.timestamp;
+    const date = ts.slice(0, 10);
+    const { input_tokens = 0, output_tokens = 0, cache_creation_input_tokens = 0, cache_read_input_tokens = 0 } = msg.usage;
+    const { w5m, w1h } = splitCacheWrites(msg.usage);
+    const cost = calcCost(msg.model, input_tokens, output_tokens, w5m, w1h, cache_read_input_tokens, priceMultiplier(msg.model, msg.usage));
+    if (cost <= 0) return false;
+    const hour = new Date(ts).getHours();
+    const existing = dailyMap.get(date) || { total: 0, byModel: {}, input: 0, output: 0, cacheWrite: 0, cacheRead: 0, hours: {} };
+    existing.total += cost;
+    existing.byModel[msg.model] = (existing.byModel[msg.model] || 0) + cost;
+    existing.input += input_tokens;
+    existing.output += output_tokens;
+    existing.cacheWrite += cache_creation_input_tokens;
+    existing.cacheRead += cache_read_input_tokens;
+    existing.hours[hour] = (existing.hours[hour] || 0) + 1;
+    dailyMap.set(date, existing);
+
+    const mu = (modelUsage[msg.model] ||= {
+      inputTokens: 0, outputTokens: 0,
+      cacheReadInputTokens: 0, cacheCreationInputTokens: 0, costUSD: 0,
+    });
+    mu.inputTokens += input_tokens;
+    mu.outputTokens += output_tokens;
+    mu.cacheReadInputTokens += cache_read_input_tokens;
+    mu.cacheCreationInputTokens += cache_creation_input_tokens;
+    mu.costUSD += cost;
+    totalMessages++;
+    return true;
+  };
+
+  /*
+   * 🔴 Claude Code は1つの応答を内容ブロック（thinking / text / tool_use）ごとに別の行へ書き出し、
+   * どの行にも同じ usage を丸ごと付ける。行ごとに足すと同じ応答を2〜4回数えてしまう
+   * （実ログで金額が約1.9倍になっていた）。そこで message.id ごとに1回だけ数える。
+   * 同じ応答の行は連続して書かれ、output_tokens は最後の行が最終値なので、最後の行を採る。
+   * 別のファイルに同じ応答が現れた場合は、先に数えた方を残す。
+   */
+  const countedIds = new Set<string>();
+
   for (const file of findJSONLFiles(projectsDir)) {
     try {
       let countedInThisFile = 0;
+      let pending: AssistantEntry | null = null;
+      const flush = () => {
+        if (!pending) return;
+        const id = pending.message.id;
+        if (id) {
+          if (countedIds.has(id)) { pending = null; return; }
+          countedIds.add(id);
+        }
+        if (add(pending)) countedInThisFile++;
+        pending = null;
+      };
+
       const content = fs.readFileSync(file, "utf-8");
       for (const line of content.split("\n")) {
         if (!line.trim()) continue;
@@ -214,38 +270,18 @@ function parseJSONLForDir(projectsDir: string): ParsedJSONL {
           if (entry.type !== "assistant") continue;
           const msg = entry.message;
           if (!msg?.usage || !msg?.model) continue;
-          const ts: string = entry.timestamp;
-          if (!ts) continue;
-          const date = ts.slice(0, 10);
-          const { input_tokens = 0, output_tokens = 0, cache_creation_input_tokens = 0, cache_read_input_tokens = 0 } = msg.usage;
-          const { w5m, w1h } = splitCacheWrites(msg.usage);
-          const cost = calcCost(msg.model, input_tokens, output_tokens, w5m, w1h, cache_read_input_tokens, priceMultiplier(msg.model, msg.usage));
-          if (cost <= 0) continue;
-          const hour = new Date(ts).getHours();
-          const existing = dailyMap.get(date) || { total: 0, byModel: {}, input: 0, output: 0, cacheWrite: 0, cacheRead: 0, hours: {} };
-          existing.total += cost;
-          existing.byModel[msg.model] = (existing.byModel[msg.model] || 0) + cost;
-          existing.input += input_tokens;
-          existing.output += output_tokens;
-          existing.cacheWrite += cache_creation_input_tokens;
-          existing.cacheRead += cache_read_input_tokens;
-          existing.hours[hour] = (existing.hours[hour] || 0) + 1;
-          dailyMap.set(date, existing);
-
-          const mu = (modelUsage[msg.model] ||= {
-            inputTokens: 0, outputTokens: 0,
-            cacheReadInputTokens: 0, cacheCreationInputTokens: 0, costUSD: 0,
-          });
-          mu.inputTokens += input_tokens;
-          mu.outputTokens += output_tokens;
-          mu.cacheReadInputTokens += cache_read_input_tokens;
-          mu.cacheCreationInputTokens += cache_creation_input_tokens;
-          mu.costUSD += cost;
-
-          countedInThisFile++;
-          totalMessages++;
+          if (!entry.timestamp) continue;
+          const current = entry as AssistantEntry;
+          // 同じ応答の続きの行なら、手前の行を捨てて最後の行に置き換える
+          if (pending && current.message.id && pending.message.id === current.message.id) {
+            pending = current;
+            continue;
+          }
+          flush();
+          pending = current;
         } catch {}
       }
+      flush();
       if (countedInThisFile > 0) totalSessions++;
     } catch {}
   }
