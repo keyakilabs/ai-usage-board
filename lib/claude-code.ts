@@ -5,16 +5,148 @@ import type { ClaudeCodeStats, ClaudeProfile, DailyCost, ModelUsage } from "./ty
 const HOME = process.env.HOME || "";
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
-function getModelPricing(model: string) {
-  const m = model.toLowerCase();
-  if (m.includes("opus")) return { input: 15, output: 75, cacheWrite: 18.75, cacheRead: 1.5 };
-  if (m.includes("haiku")) return { input: 0.8, output: 4, cacheWrite: 1.0, cacheRead: 0.08 };
-  return { input: 3, output: 15, cacheWrite: 3.75, cacheRead: 0.3 };
+/**
+ * API単価（USD / 100万トークン）。出典は公式の料金ページ。
+ * https://platform.claude.com/docs/en/about-claude/pricing （最終確認: 2026-09-19）
+ *
+ * ⚠️ モデル名だけで "opus" → 一律、としてはいけない。単価は世代ごとに改定される。
+ * 実際 Opus は 4.5 で $15/$75 → $5/$25 に下がっており、世代を見ないと3倍ずれる。
+ *
+ * キャッシュ書き込みは 5分（base × 1.25）と 1時間（base × 2）で単価が違う。
+ * 読み出しは base × 0.1（Fable/Mythos 5.1 だけ × 0.025）。
+ */
+type Pricing = {
+  input: number;
+  output: number;
+  /** 5分キャッシュへの書き込み（base × 1.25） */
+  cacheWrite: number;
+  /** 1時間キャッシュへの書き込み（base × 2） */
+  cacheWrite1h: number;
+  cacheRead: number;
+};
+
+/** base 単価から各単価を導く。readMul は読み出しの乗数（5.1 世代だけ 0.025）。 */
+function withCache(input: number, output: number, readMul = 0.1): Pricing {
+  const round = (n: number) => Math.round(n * 1e6) / 1e6;
+  return {
+    input,
+    output,
+    cacheWrite: round(input * 1.25),
+    cacheWrite1h: round(input * 2),
+    cacheRead: round(input * readMul),
+  };
 }
 
-function calcCost(model: string, input: number, output: number, cacheWrite: number, cacheRead: number): number {
+/**
+ * モデルID から世代を取り出す。`major * 100 + minor` の整数で返す
+ * （4.5 → 405、4.10 → 410、5 → 500、5.1 → 501）。
+ * 小数で持つと 4.1 と 4.10 が同じ値になるため、小数部は桁ごと整数で持つ。
+ *
+ * IDの形式は2種類あり、世代の位置が違う。
+ *   新: `claude-opus-4-5-20251101` → 405 ／ `claude-fable-5-1` → 501（世代が後ろ）
+ *   旧: `claude-3-5-haiku-20241022` → 305 ／ `claude-3-opus-20240229` → 300（世代が前）
+ * 末尾の8桁は日付なので世代として読まない。
+ * プロキシ経由（OpenRouter 等）のログには `claude-opus-4.5` のようなドット区切りの名前が入るので、
+ * 区切りはハイフンとドットの両方を受ける。
+ */
+function parseGeneration(model: string): number | null {
+  const toGen = (major: string, minor?: string) => {
+    if (major.length >= 3) return null; // 日付やビルド番号を世代と読み違えない
+    const m = minor && minor.length <= 2 ? Number(minor) : 0;
+    return Number(major) * 100 + m;
+  };
+
+  // 旧形式を先に見る（`claude-3-5-haiku-...` は後ろにも数字が続くため）
+  const old = model.match(/claude-(\d+)(?:[-.](\d+))?-(?:opus|sonnet|haiku|fable|mythos)/);
+  if (old) return toGen(old[1], old[2]);
+
+  const cur = model.match(/(?:opus|sonnet|haiku|fable|mythos)-(\d+)(?:[-.](\d+))?/);
+  if (cur) return toGen(cur[1], cur[2]);
+
+  return null;
+}
+
+/**
+ * 🔴 世代が読めないとき（`"model":"opus"` のようなエイリアス）は、
+ * どの系統でも**現行世代**の単価に倒す。引退した世代の単価を既定にしない。
+ */
+function getModelPricing(model: string): Pricing {
+  const m = model.toLowerCase();
+  const gen = parseGeneration(m);
+
+  // Fable / Mythos は Opus とは別の価格帯（$10/$50）。5.1 世代は読み出しだけ 0.025x の特例
+  if (m.includes("fable") || m.includes("mythos")) {
+    return withCache(10, 50, gen === null || gen >= 501 ? 0.025 : 0.1);
+  }
+  if (m.includes("opus")) {
+    // 4.5 以降は $5/$25。4.1 以前（引退済み）は $15/$75
+    if (gen === null || gen >= 405) return withCache(5, 25);
+    return withCache(15, 75);
+  }
+  if (m.includes("haiku")) {
+    // 4.5 は $1/$5。3.5 は $0.8/$4（引退済み）
+    if (gen === null || gen >= 400) return withCache(1, 5);
+    if (gen >= 305) return withCache(0.8, 4);
+    // Haiku 3（引退済み）はキャッシュ単価が乗数どおりでなかった（書き込み $0.30・読み出し $0.03）
+    return { input: 0.25, output: 1.25, cacheWrite: 0.3, cacheWrite1h: 0.5, cacheRead: 0.03 };
+  }
+  // Sonnet 5 は $2/$10。4.6 以前は $3/$15
+  if (gen === null || gen >= 500) return withCache(2, 10);
+  return withCache(3, 15);
+}
+
+/**
+ * 応答ごとの料金の補正。どちらも全区分（入力・出力・キャッシュ）に掛かり、重ねて掛かる。
+ *   - fast mode（`usage.speed: "fast"`）: 2倍。公式の fast mode 料金があるのは Opus 5 / 4.8 だけ。
+ *     Opus 4.6 は fast を指定しても標準の速度・標準料金になるので2倍にしない
+ *   - US 限定の推論（`usage.inference_geo: "us"`）: 1.1倍。対象は Claude 4.6 以降だけ
+ */
+function priceMultiplier(model: string, usage: { speed?: string; inference_geo?: string }): number {
+  const m = model.toLowerCase();
+  const gen = parseGeneration(m);
+  let mul = 1;
+  if (usage.speed === "fast" && m.includes("opus") && (gen === null || gen >= 408)) mul *= 2;
+  if (usage.inference_geo === "us" && (gen === null || gen >= 406)) mul *= 1.1;
+  return mul;
+}
+
+/**
+ * キャッシュ書き込みは 5分と 1時間で単価が違うので分けて渡す。
+ * mul は priceMultiplier の値。
+ */
+function calcCost(
+  model: string,
+  input: number,
+  output: number,
+  cacheWrite5m: number,
+  cacheWrite1h: number,
+  cacheRead: number,
+  mul = 1,
+): number {
   const p = getModelPricing(model);
-  return (input * p.input + output * p.output + cacheWrite * p.cacheWrite + cacheRead * p.cacheRead) / 1_000_000;
+  return (
+    (input * p.input +
+      output * p.output +
+      cacheWrite5m * p.cacheWrite +
+      cacheWrite1h * p.cacheWrite1h +
+      cacheRead * p.cacheRead) *
+    mul
+  ) / 1_000_000;
+}
+
+/**
+ * キャッシュ書き込み（`cache_creation_input_tokens`）を 5分ぶん / 1時間ぶん に分ける。
+ * 1時間ぶんを内訳（`usage.cache_creation`）から取り、残りを 5分ぶんとする。
+ * 内訳が無い古いログは全部 5分ぶんになる。画面のトークン数（合計値）と金額の根拠を揃えるため、
+ * 合計値を基準にしている。
+ */
+function splitCacheWrites(usage: {
+  cache_creation_input_tokens?: number;
+  cache_creation?: { ephemeral_5m_input_tokens?: number; ephemeral_1h_input_tokens?: number };
+}): { w5m: number; w1h: number } {
+  const total = usage.cache_creation_input_tokens ?? 0;
+  const w1h = Math.min(usage.cache_creation?.ephemeral_1h_input_tokens ?? 0, total);
+  return { w5m: total - w1h, w1h };
 }
 
 function findJSONLFiles(dir: string): string[] {
@@ -86,7 +218,8 @@ function parseJSONLForDir(projectsDir: string): ParsedJSONL {
           if (!ts) continue;
           const date = ts.slice(0, 10);
           const { input_tokens = 0, output_tokens = 0, cache_creation_input_tokens = 0, cache_read_input_tokens = 0 } = msg.usage;
-          const cost = calcCost(msg.model, input_tokens, output_tokens, cache_creation_input_tokens, cache_read_input_tokens);
+          const { w5m, w1h } = splitCacheWrites(msg.usage);
+          const cost = calcCost(msg.model, input_tokens, output_tokens, w5m, w1h, cache_read_input_tokens, priceMultiplier(msg.model, msg.usage));
           if (cost <= 0) continue;
           const hour = new Date(ts).getHours();
           const existing = dailyMap.get(date) || { total: 0, byModel: {}, input: 0, output: 0, cacheWrite: 0, cacheRead: 0, hours: {} };

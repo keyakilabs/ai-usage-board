@@ -78,6 +78,24 @@ Claude Max や Gemini Advanced のような**サブスクリプション料金�
 Gemini CLI と Antigravity はログにトークン情報が含まれないため、コストは「計測外」と表示されます
 （Antigravity は起動回数のみ）。
 
+### 単価の出どころ
+
+単価は [公式の料金ページ](https://platform.claude.com/docs/en/about-claude/pricing) の値を
+`lib/claude-code.ts` の `getModelPricing` に持っています（最終確認: 2026-09-19）。
+
+- **単価は世代ごとに違う**ので、モデルIDから世代を判定して当てています（Opus 4.5 以降は $5/$25、4.1 以前は $15/$75、など）。
+  世代が読めない表記（`"model":"opus"` など）は現行世代の単価で計算します
+- プロンプトキャッシュへの書き込みは 5分（base × 1.25）と 1時間（base × 2）で単価が違うので、
+  ログの内訳（`usage.cache_creation`）を見て分けて計算しています
+- fast mode（`usage.speed: "fast"`）は2倍（公式の fast mode 料金がある Opus 5 / 4.8 のみ）、
+  US 限定の推論（`usage.inference_geo: "us"`）は1.1倍（Claude 4.6 以降のみ）で計算します
+- **トークン代だけ**を計算しています。Web 検索（1,000回あたり $10）やコード実行の時間課金など、
+  トークン以外の料金は含みません（Claude Code のログでは、Web 検索を使っても
+  `usage.server_tool_use.web_search_requests` が 0 のままで、正しい回数が取れないため）
+
+⚠️ 料金は改定されます。**単価が古いと金額がそのままずれる**ので、気になるときは公式ページと
+`getModelPricing` の分岐を見比べてください。ずれていたら Issue か PR をもらえると助かります。
+
 ### 「全期間」は各ツールのログが残っている範囲
 
 このツールは手元のログを読んでいるだけなので、**ツール側が古いログを消すと、その分は集計から消えます**。
