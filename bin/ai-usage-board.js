@@ -26,7 +26,7 @@ Options:
 
 Data sources (read-only, local files only — nothing is sent anywhere):
   Claude Code   ~/.claude/projects/**/*.jsonl
-  Gemini CLI    ~/.gemini/usage_data.db
+  Gemini CLI    ~/.gemini/tmp/*/logs.json
   OpenCode      ~/.local/share/opencode/opencode.db
   Antigravity   ~/Library/Application Support/Antigravity/logs/
 
