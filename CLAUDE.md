@@ -22,7 +22,7 @@ bin/
 components/             # UI コンポーネント
 lib/
   claude-code.ts        # ~/.claude/projects/**/*.jsonl 解析（JSONL全スキャン）
-  gemini.ts             # ~/.gemini/usage_data.db 解析
+  gemini.ts             # ~/.gemini/tmp/*/logs.json 解析
   opencode.ts           # ~/.local/share/opencode/opencode.db 解析
   antigravity.ts        # ~/Library/Application Support/Antigravity/logs/ 解析
   types.ts              # 型定義
@@ -67,7 +67,7 @@ npx playwright screenshot --viewport-size=1280,980 http://localhost:3456/ out.pn
 | ツール | ソース | データ内容 |
 |--------|--------|-----------|
 | Claude Code | `~/.claude/projects/**/*.jsonl` | モデル別トークン・コスト（JSONL全スキャン、5分キャッシュ） |
-| Gemini CLI | `~/.gemini/usage_data.db` | モデル別・日次トークン・コスト |
+| Gemini CLI | `~/.gemini/tmp/*/logs.json` | 日次セッション数・メッセージ数（トークン・コストはログに無い） |
 | OpenCode | `~/.local/share/opencode/opencode.db` | セッション・トークン数・コスト |
 | Antigravity | `~/Library/Application Support/Antigravity/logs/` | 起動セッション数 |
 

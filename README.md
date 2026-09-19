@@ -40,7 +40,7 @@ AIコーディングツールを複数使い分け始めると、管理画面が
 | ツール | 読み取り元 |
 |---|---|
 | Claude Code | `~/.claude/projects/**/*.jsonl` |
-| Gemini CLI | `~/.gemini/usage_data.db` |
+| Gemini CLI | `~/.gemini/tmp/*/logs.json` |
 | OpenCode | `~/.local/share/opencode/opencode.db` |
 | Antigravity | `~/Library/Application Support/Antigravity/logs/` |
 
@@ -66,7 +66,7 @@ npx ai-usage-board --help
 ```
 
 期間（今日 / 今週 / 今月 / 全期間）とツールを切り替えて、日別コスト・モデル別コスト・
-トークン推移・時間帯別の活動量を見られます。
+使ったトークンの量・時間帯別の活動量を見られます。
 
 ## コストの数字について
 
