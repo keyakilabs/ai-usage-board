@@ -1,6 +1,6 @@
 {
   "name": "ai-usage-board",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Claude Code / Gemini CLI / OpenCode / Antigravity のローカルログを読み取り、AIコーディングツールの使用量とコストを1画面にまとめるCLIツール。データは外部に送信しません。",
   "keywords": [
     "claude-code",
