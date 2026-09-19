@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { GeminiStats } from "./types";
+import { toLocalDate } from "./date";
 
 const TMP_DIR = path.join(process.env.HOME || "", ".gemini", "tmp");
 
@@ -19,7 +20,7 @@ export function getGeminiStats(): GeminiStats | null {
         const entries = JSON.parse(fs.readFileSync(logsPath, "utf-8")) as { timestamp?: string; type?: string }[];
         if (!entries.length) continue;
         totalSessions++;
-        const date = (entries[0].timestamp ?? "").slice(0, 10);
+        const date = toLocalDate(entries[0].timestamp ?? "");
         if (!date) continue;
         const cur = dailyMap.get(date) ?? { sessions: 0, messages: 0 };
         const msgCount = entries.filter((e) => e.type === "user").length;

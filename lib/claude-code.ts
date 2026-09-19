@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import type { ClaudeCodeStats, ClaudeProfile, DailyCost, ModelUsage } from "./types";
+import { toLocalDate } from "./date";
 
 const HOME = process.env.HOME || "";
 const CACHE_TTL_MS = 5 * 60 * 1000;
@@ -209,7 +210,8 @@ function parseJSONLForDir(projectsDir: string): ParsedJSONL {
   const add = (entry: AssistantEntry): boolean => {
     const msg = entry.message;
     const ts = entry.timestamp;
-    const date = ts.slice(0, 10);
+    const date = toLocalDate(ts);
+    if (!date) return false;
     const { input_tokens = 0, output_tokens = 0, cache_creation_input_tokens = 0, cache_read_input_tokens = 0 } = msg.usage;
     const { w5m, w1h } = splitCacheWrites(msg.usage);
     const cost = calcCost(msg.model, input_tokens, output_tokens, w5m, w1h, cache_read_input_tokens, priceMultiplier(msg.model, msg.usage));

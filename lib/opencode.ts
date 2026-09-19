@@ -1,5 +1,6 @@
 import path from "path";
 import type { OpenCodeStats, OpenCodeSession } from "./types";
+import { toLocalDate } from "./date";
 
 const DB_PATH = path.join(
   process.env.HOME || "",
@@ -79,8 +80,7 @@ export function getOpenCodeStats(): OpenCodeStats | null {
 
     const dailyMap = new Map<string, { input: number; output: number; cost: number }>();
     enriched.forEach((s) => {
-      const d = new Date(s.timeCreated);
-      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+      const date = toLocalDate(s.timeCreated);
       const cur = dailyMap.get(date) || { input: 0, output: 0, cost: 0 };
       dailyMap.set(date, {
         input: cur.input + s.inputTokens,
